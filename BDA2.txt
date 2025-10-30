@@ -1,0 +1,252 @@
+#Wordcount using map reduce
+text = input("Enter text: ")
+
+mapped = []
+for word in text.split():
+    mapped.append((word, 1))
+
+shuffle = {}
+for word, count in mapped:
+    if word in shuffle:
+        shuffle[word].append(count)
+    else:
+        shuffle[word] = [count]
+
+for word in shuffle:
+    print(word, "-", sum(shuffle[word]))
+
+
+
+#FM
+import hashlib
+
+CUSTOM_HASHES={1:(6,1,5),2:(11,7,5)}
+
+def linear_hash(x,a,b,p):
+    return (a*x+b)%p
+
+def tz(x):
+    return (x & -x).bit_length()-1 if x else 0
+
+def fm(data,a,b,p):
+    m=0
+    print("\nElement-wise computation:")
+    for e in data:
+        x=int(e) if e.isdigit() else int(hashlib.md5(e.encode()).hexdigest(),16)%p
+        h=linear_hash(x,a,b,p)
+        r=tz(h)
+        print(f"Element: {e} | Hash: {h} | Binary: {format(h,'03b')} | r = {r}")
+        m=max(m,r)
+    return 2**m
+
+elems=[e.strip() for e in input("Enter comma-separated stream elements: ").split(",") if e.strip()]
+print("\nAvailable hash functions:")
+for i,(a,b,p) in CUSTOM_HASHES.items():
+    print(f"{i}: h(x)=({a}*x+{b}) mod {p}")
+
+hf=int(input("\nChoose hash function number: ") or 1)
+a,b,p=CUSTOM_HASHES.get(hf,(6,1,5))
+
+print(f"\nEstimated number of distinct elements using hash {hf}: {fm(elems,a,b,p)}")
+
+
+
+#Blooms Filter
+import math
+
+m = int(input("Enter m: ").strip())
+bits = [0] * m
+
+f1 = lambda x: x % m
+f2 = lambda x: (2 * x + 6) % m
+
+ins = input("Insert ints (space, blank none): ").strip()
+for x in map(int, ins.split()) if ins else []:
+    bits[f1(x)] = 1
+    bits[f2(x)] = 1
+
+qry = input("Check ints (space, blank none): ").strip()
+for x in map(int, qry.split()) if qry else []:
+    if bits[f1(x)] and bits[f2(x)]:
+        print(x, "-> probably present")
+    else:
+        print(x, "-> not present")
+
+print("Bit array:", list(enumerate(bits)))
+
+
+#Matrix multiplication using mapreduce
+
+A = [
+    [1, 2],
+    [3, 4]
+]
+
+B = [
+    [5, 6],
+    [7, 8]
+]
+
+
+def mapper(A, B):
+    mapped = []
+
+    rows_A = len(A)
+    cols_A = len(A[0])
+    rows_B = len(B)
+    cols_B = len(B[0])
+
+   
+    for i in range(rows_A):
+        for j in range(cols_A):
+            for k in range(cols_B):
+                mapped.append(((i, k), ('A', j, A[i][j])))
+
+   
+    for i in range(rows_B):
+        for j in range(cols_B):
+            for k in range(rows_A):
+                mapped.append(((k, j), ('B', i, B[i][j])))
+
+    return mapped
+
+
+def shuffle(mapped):
+    grouped = {}
+    for key, value in mapped:
+        if key not in grouped:
+            grouped[key] = []
+        grouped[key].append(value)
+    return grouped
+
+
+def reducer(grouped):
+    result = {}
+    for key, values in grouped.items():
+        A_vals = {}
+        B_vals = {}
+
+        for tag, index, val in values:
+            if tag == 'A':
+                A_vals[index] = val
+            else:
+                B_vals[index] = val
+
+        total = 0
+        for k in A_vals:
+            if k in B_vals:
+                total += A_vals[k] * B_vals[k]
+
+        result[key] = total
+    return result
+
+
+mapped_data = mapper(A, B)
+grouped_data = shuffle(mapped_data)
+result = reducer(grouped_data)
+
+
+rows = len(A)
+cols = len(B[0])
+print("Resultant Matrix:")
+for i in range(rows):
+    row = []
+    for j in range(cols):
+        row.append(result[(i,j)])
+    print(row)
+
+
+#DGIM
+
+class DGIM:
+    def __init__(self, window_size):
+        self.window = window_size
+        self.buckets = []  # (size, timestamp)
+
+    def add_bit(self, bit, timestamp):
+      
+        if bit == 1:
+            self.buckets.append([1, timestamp])
+
+           
+            while self.need_merge():
+                self.merge()
+
+   
+        self.buckets = [b for b in self.buckets if timestamp - b[1] < self.window]
+
+    def need_merge(self):
+        if len(self.buckets) < 3:
+            return False
+        
+        return (self.buckets[-1][0] == self.buckets[-2][0] ==
+                self.buckets[-3][0])
+
+    def merge(self):
+       
+        b1 = self.buckets.pop(-3)  # remove third last
+        b2 = self.buckets.pop(-2)  # remove second last
+     
+        self.buckets.insert(-1, [b1[0] * 2, b2[1]])
+
+    def query(self, timestamp):
+        total = 0
+        last_bucket = None
+        
+        for size, time in self.buckets:
+            if timestamp - time < self.window:
+                total += size
+                last_bucket = (size, time)
+        
+        
+        if last_bucket:
+            total -= last_bucket[0] // 2
+        
+        return total
+
+
+
+stream = input("Enter bit stream (e.g., 10110101): ")
+k = int(input("Enter last k bits to count 1s: "))
+
+dgim = DGIM(window_size=k)
+
+for t, bit in enumerate(stream):
+    dgim.add_bit(int(bit), t)
+
+print("\nEstimated number of 1's in last", k, "bits =", dgim.query(len(stream)))
+
+
+
+##R Language
+#install Rstudio
+#Install R for windows
+
+
+# Install libraries (run once)
+install.packages("ggplot2")
+
+# Load library
+library(ggplot2)
+
+# Load sample data
+data("mtcars")
+
+# Convert cyl to categorical
+mtcars$cyl <- factor(mtcars$cyl)
+
+# Histogram
+ggplot(mtcars, aes(x = mpg)) +
+  geom_histogram(binwidth = 3, fill = "skyblue", color = "black", alpha = 0.8) +
+  labs(title = "Distribution of Miles per Gallon (mpg)",
+       x = "Miles per Gallon (mpg)", y = "Count") +
+  theme_minimal()
+
+# Scatter plot with regression line
+ggplot(mtcars, aes(x = wt, y = mpg)) +
+  geom_point(size = 2, color = "red") +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  labs(title = "Relationship: Weight vs MPG",
+       x = "Weight (1000 lbs)", y = "Miles per Gallon (mpg)") +
+  theme_minimal()
+
